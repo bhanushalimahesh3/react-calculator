@@ -9,66 +9,139 @@ import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Typography from '@material-ui/core/Typography';
 
+const backspace = function(str) {
+  if(str.length > 0)
+    return str.substring(0, str.length - 1);
+  
+  return '';  
+};
+
+const allowedOperation = ['%', '/', 'x', '-', '+', '='];
+
+const clear = function() {
+  return '0';
+};
+
+const result = function(str) {
+
+  let calOutput = str;
+
+  allowedOperation.forEach(function(value, index) {
+    if(str.includes(value)) {
+      const inputs = str.split(value);
+      
+      switch(value) {
+
+        case '+' :
+          calOutput = (parseInt(inputs[0]) + parseInt(inputs[1]));
+          break;
+
+        case '-' :
+          calOutput = (parseInt(inputs[0]) - parseInt(inputs[1]));
+          break;
+          
+        case '/' :
+          calOutput = (parseInt(inputs[0]) / parseInt(inputs[1]));
+          break;
+          
+        case 'x' :
+          calOutput = (parseInt(inputs[0]) * parseInt(inputs[1]));
+          break;
+
+        default:
+          break;
+      }
+    }
+  });
+  
+  return calOutput;
+}
+
 const buttonText = [      [
-                            {text : 'AC', op : 'clear'},
-                            {text : <BackspaceIcon />, op : 'delete'},
-                            {text : '%', op : 'percentage'},
-                            {text : '/', op : 'division'}
+                            {text : 'AC',  action : clear},
+                            {text : <BackspaceIcon />,  action : backspace},
+                            {text : '%'},
+                            {text : '/'}
                           ],
                           [
                             {text : '7'},
                             {text : '8'},
                             {text : '9'},
-                            {text : 'X', op : 'multiplication'}
+                            {text : 'x'}
                           ],
                           [
                             {text : '4'},
                             {text : '5'},
                             {text : '6'},
-                            {text : '-', op : 'subtraction'}
+                            {text : '-'}
                           ],
                           [
                             {text : '1'},
                             {text : '2'},
                             {text : '3'},
-                            {text : '+', op : 'addition'}
+                            {text : '+'}
                           ],
                           [
                             {text : <HistoryIcon/>, op : 'history'},
                             {text : '0'},
                             {text : '.'},
-                            {text : '=', op : 'equal'}
+                            {text : '=', action : result}
                           ]                          
                   ];
 
 const inputs = {
-  calInput1 : '',
+  calInput : '',
   calResult : '',
-  setCalInput1 : '',
+  setCalInput : '',
   setCalResult : ''
 };
 
-const InputContext = React.createContext(inputs);                  
+const InputContext = React.createContext(inputs);
+                  
 
-function handleClick(e, text) {
+function handleClick(e, text, prevCalInput) {
+
+  const strLength = prevCalInput.length;
   
-  if(text.op) {
-    return text.op
-  }else{
-    return text.text;
-  }
-}                  
+  // if length is zero
+  if((strLength === 0) && isFirstCharOperation(text.text)) 
+    return '';  
+
+  if(operationReTyped(text.text, prevCalInput))
+    return prevCalInput;    
+  
+  return `${prevCalInput}${text.text}`;
+}
+
+function isFirstCharOperation(op) {
+  return allowedOperation.includes(op)
+}
+
+function operationReTyped(userTyped, oldStr) {
+
+  return (allowedOperation.includes(userTyped) && (allowedOperation.filter((value) => oldStr.includes(value)).length === 1));
+}
+
+
+function handleHistory()
+{
+  return '';
+}
 
 function App() {
-  const [calInput1, setCalInput1] = useState('mahesh');
-  const [calResult, setCalResult] = useState('Bhanusali');
-  
+  const [calInput, setCalInput] = useState('');
+  const [calResult, setCalResult] = useState(0);
+  const [myHistoryResult, setMyHistoryResult] = useState(0);
+
+ 
 
   return (
           <Container>
             <Card>
               <CardContent>
-                <InputContext.Provider value={{calInput1, setCalInput1, calResult, setCalResult}}>
+                <InputContext.Provider value={{calInput, setCalInput, 
+                                               calResult, setCalResult, 
+                                               myHistoryResult, setMyHistoryResult}}>
                   <ResultDisplay />                  
                   <Grid container spacing={0}>
                     {buttonText.map((rows, i) => <KeyPadLayout rows={rows} key={i}/>)}
@@ -93,29 +166,48 @@ function KeyPadLayout(props) {
 }
 
 function KeyPadBtn(props) {
-  const {setCalInput1, calInput1} = useContext(InputContext);
-  console.log(`value of input ${calInput1}`);
+  let { setCalInput, calInput, 
+          setCalResult, calResult, 
+          myHistoryResult, setMyHistoryResult } = useContext(InputContext);
   const {btn} = props; 
-
   return (
           <Button variant="contained"  
                   size="large" 
-                  onClick={(e) => setCalInput1(handleClick(e, btn))}>
+                  onClick={(e) => {
+                    if(btn.op) {
+                      myHistoryResult = handleHistory();
+                    }else if(btn.action){
+                      
+                      if((btn.action.name === 'clear') || (btn.action.name === 'backspace')){
+                        calInput = btn.action(calInput);
+                        if(btn.action.name === 'clear')
+                          calResult = calInput;
+                      }else{
+                        calResult = btn.action(calInput);
+                      }
+                        
+                    }else { 
+                      calInput = handleClick(e, btn, calInput);                  
+                    }
+                    setCalInput(calInput);
+                    setCalResult(calResult);
+                    setMyHistoryResult(myHistoryResult);
+                  }}>
             {btn.text}
           </Button>
           );
 }
 
 function ResultDisplay() {
-  const {calInput1, calResult} = useContext(InputContext);  
+  const {calInput, calResult} = useContext(InputContext);  
 
   return (
           <Fragment>
             <Typography variant="h5" >
-              {calInput1}
+              {calInput}
             </Typography>
             <Typography variant="h5" >
-              ={calResult}
+              {calResult}
             </Typography>
           </Fragment>  
             );
